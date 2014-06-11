@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+		<title>ErlGraphs</title>
+		<link rel="stylesheet" type="text/css" href="./css/styles.css">
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"></script>
+		<script src="./js/arbor-v0.92/lib/arbor.js"></script>
+		<script src="./js/main.js"></script>
+		<script src="jsolait/jsolait.js"></script>
+	</head>
+
+	<body>
+		<div id="container" style="width:1000px; height:100%">
+			<erl>
+				out(A) -> {yssi, "header.yaws"}.
+			</erl>
+			
+			<div style="width: 100%; display: table;">
+			    <div style="display: table-row">
+				<div style="width: 300px; display: table-cell;">
+					<ul id="list-of-graphs">Graphs:
+						<erl>
+							-include("graphs.hrl").
+							
+							out(A) -> 
+								GetGraphs = fun() ->
+									mnesia:foldl(fun(Graph, Acc) -> 
+												lists:concat([Acc, "<li>", Graph#graphs.name, "</li>"])
+											end, [], graphs)
+									end,
+								case mnesia:transaction(GetGraphs) of 
+									{atomic, List} ->
+										{html, List};
+									{aborted, Reason} ->
+										io:format("Aborted: ~p~n", [Reason]);
+									{error, Reason} ->										
+										io:format("Erorror: ~s~n", [Reason]);
+									Other -> 
+										io:format("Other: ~p~n", [Other])
+								end.
+						</erl>
+						<li id="add-graph">						
+							<form action="demo_form.asp">
+								<input type="text" name="gname">
+								<input type="submit" value="Add">
+							</form> 
+						</li>					
+					</ul>
+				</div>
+				<div style="display: table-cell;">
+					<canvas id="viewport" width="700" height="700"></canvas>
+				</div>
+			    </div>
+			</div>
+		
+			<erl>
+				out(A) -> {yssi, "footer.yaws"}.		
+			</erl>
+		</div>
+	</body>
+</html> 

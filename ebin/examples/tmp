@@ -29,9 +29,7 @@
 		{cont, Cont, Res} ->
 		    case addFileChunk(A, Res, State) of
 		        {done, Result} ->
-			    erlang:display("OK1"),
 			    mnesia:transaction(fun() ->
-							erlang:display("OK2"),
 							write_nodes(State#upload.gid),
 							write_edges(State#upload.gid)
 				               end),
@@ -42,12 +40,6 @@
 		{result, Res} ->
 		    case addFileChunk(A, Res, State#upload{last=true}) of
 		        {done, Result} ->
-			    erlang:display("OK11"),
-			    mnesia:transaction(fun() ->
-							erlang:display("OK21"),
-							write_nodes(State#upload.gid),
-							write_edges(State#upload.gid)
-				               end),
 		            Result;
 		        {cont, _} ->
 		            err()
@@ -80,14 +72,10 @@
 	addFileChunk(A, [{head, {_Name, Opts}}|Res], State ) ->
 	    case lists:keysearch("filename", 1, Opts) of
 		{value, {_, Fname0}} ->
-		    {_, {_, InputName}} = lists:keysearch("name", 1, Opts),
-		    erlang:display(string:tokens(InputName, "_")),
-		    [IName, Gid] = string:tokens(InputName, "_"),
-		     erlang:display(string:tokens(InputName, "_")),
-		    case IName of 
-		    	"gnodes" ->
+		    case lists:keysearch("name", 1, Opts) of 
+		    	{_, {_, "gnodes"}} ->
 				Fname = "gnodes";
-			"gedges" ->
+			{_, {_, "gedges"}} ->
 				Fname = "gedges";
 			_ ->
 				Fname = "shit",
@@ -101,7 +89,9 @@
 		    io:format("~p~p~n", [string:concat(Cwd, ?DIR), Fname]),
 		    file:make_dir(string:concat(Cwd, ?DIR)),
 		    case file:open([string:concat(Cwd, ?DIR), Fname] ,[write]) of
-			{ok, Fd} -> 
+			{ok, Fd} ->
+			    io:format("GID: ~p~n", [lists:keysearch("gid", 1, Opts)]),
+			    {_, {_, Gid}} = lists:keysearch("gid", 1, Opts), 
 			    S2 = State#upload{filename = Fname,
 					      fd = Fd,
 					      gid = Gid},
@@ -147,14 +137,11 @@
 	parse_nodes(Str, GraphId) when is_list(Str) ->
 		try
 			lists:foldl(fun(Node, Status) ->
-						erlang:display(string:tokens(Node, ";")),
 						[Id, Name, X, Y] = string:tokens(Node, ";"),
-						R = mnesia:write(#vertecies{id=Id,
-								graph_id=GraphId,
+						mnesia:write(#vertecies{id=Id,
 								name=Name,
 								x=X,
 								y=Y}),
-						erlang:display(R),
 						ok
 	    			     end, ok, string:tokens(Str, "\n"))
 		catch
@@ -165,15 +152,13 @@
 	write_edges(GraphId) ->
 		File = "/home/seva/Documents/erlgraphs/src/tmp/YawsTestUploads/gedges",
 		{ok, Bin} = file:read_file(File),
-		erlang:display("OK3"),
-		Status = parse_edges(Bin,GraphId).
+		Status = parse_graph(Bin).
 	
-	parse_edges(Bin,GraphId) when is_binary(Bin) ->
-		parse_edges(binary_to_list(Bin),GraphId);
-	parse_edges(Str,GraphId) when is_list(Str) ->
+	parse_edges(Bin) when is_binary(Bin) ->
+		parse_edges(binary_to_list(Bin));
+	parse_edges(Str) when is_list(Str) ->
 		try
 			lists:foldl(fun(Edge, Status) ->
-						erlang:display(string:tokens(Edge, ";")),
 						[V, U, I] = string:tokens(Edge, ";"),
 						Eid = case mnesia:all_keys(edges) of  
 							[] ->
@@ -181,12 +166,10 @@
 							_ ->
 								lists:max(mnesia:all_keys(edges)) + 1
 						end,
-						R = mnesia:write(#edges{id=Eid,
-								graph_id=GraphId,
+						mnesia:write(#edges{id=Eid,
 								u_id=V,
 								v_id=U,
 								i=I}),
-						erlang:display(R),
 						ok
 	    			     end, ok, string:tokens(Str, "\n"))
 		catch

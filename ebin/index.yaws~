@@ -26,7 +26,7 @@
 							out(A) -> 
 								GetGraphs = fun() ->
 									mnesia:foldl(fun(G, Acc) -> 
-												lists:concat([Acc, "<li class=", 'graph-li', " id=", G#graphs.id  ">", G#graphs.name, "</li>"])
+												lists:concat([Acc, "<li class=", 'graph-li', " id=", G#graphs.id,  ">", G#graphs.name, "</li>"])
 											end, [], graphs)
 									end,
 								case mnesia:transaction(GetGraphs) of 

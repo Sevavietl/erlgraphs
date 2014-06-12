@@ -125,6 +125,15 @@
       },
       
     }
+
+	
+    $("li.graph-li").click(function() {
+	$.getJSON("ajax/load_graph.yaws",
+		    {id: $(this).id()},
+		    function(graph) {
+		    alert(graph)
+	})
+    });	
     return that
   }
 
@@ -186,25 +195,25 @@
 * Function handles the addition of new graph
 */
 function addGraph() {
-	if $("form#add-graph-form input[name=gname]").val() === "" {
+	if ($("form#add-graph-form input[name=gname]").val() === "") {
 		alert("Please provide graph name!")
 	} else {
 		 $.getJSON("ajax/add_graph.yaws",
 		    $("form#add-graph-form").serialize(),
 		    function(graph) {
 					if (graph.id != 0) {
-						var text = '<h2>' & graph.name & '</h2>'
+						var text = '<h2>' + graph.name + '</h2>'
 						    text += '<p>Please, upload csv (comma separated values) files, that contain information for new Graph. There\'re two'   			
 						    text += 'files that needed to be uploaded. First containes all Nodes and Coordinates, it must be'
 						    text += 'in form {Node_name; Node_id; Node_x; Node_y}.'
 						    text += 'The second file contains edges, in form {Source_id, Edge_id, Target_id, Edge_weight}'		    
 
-						var form = '<form id="upload-graph-data" action="/upload.yaws" method="post" onsubmit="return uploadGraphData();" enctype="multipart/form-data">'
-						    form += '<input type="hidden" name="gid" value="' & graph.id & '">'
+						var form = '<form id="upload-graph-data" action="graph_upload.yaws" method="post" onsubmit="return uploadGraphData();" enctype="multipart/form-data">'
+						    //form += '<input type="hidden" name="gid" value=' + graph.id + '>'
 						    form += '<label>Upload file with all Nodes and Node coordinates</label>'
-						    form += '<input width="50" type="file" name="gnodes">'
+						    form += '<input width="50" type="file" name="gnodes_' + graph.id + '">'
 						    form += '<label>Upload file with all Graph edges</label>'
-						    form += '<input width="50" type="file" name="gedges"><br />'
+						    form += '<input width="50" type="file" name="gedges_ ' + graph.id + '"><br />'
 						    form += '<input type="submit" value="Upload">'
 						    form += '</form>'
 

@@ -1,0 +1,9 @@
+<erl>
+	-include("graphs.hrl").
+	
+	out(A) ->
+		io:format("Fuck: ~p~n", [yaws_api:parse_query(A)]),
+		erlang:display(yaws_api:parse_query(A)),
+		[{"id", Gid}] = yaws_api:parse_query(A),
+		mnesia:start().
+</erl>

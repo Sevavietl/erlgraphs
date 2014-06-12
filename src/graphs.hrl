@@ -13,6 +13,7 @@
 
 %% Record for edges table
 -record(edges, {id,       % id of the edge
+				graph_id,
 				u_id,	  % id of the source node
 				v_id, 	  % id of the target node
 				i}).      % weight of the edge

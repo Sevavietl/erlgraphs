@@ -1,8 +1,12 @@
 <erl>
+
+	-include("graphs.hrl").	
+	
 	-record(upload, {
 		  fd,
 		  filename,
-		  last}).
+		  last,
+		  gid}).
 
 	-define(DIR, "/tmp/YawsTestUploads/").
 
@@ -25,6 +29,12 @@
 		{cont, Cont, Res} ->
 		    case addFileChunk(A, Res, State) of
 		        {done, Result} ->
+			    erlang:display("OK1"),
+			    mnesia:transaction(fun() ->
+							erlang:display("OK2"),
+							write_nodes(State#upload.gid),
+							write_edges(State#upload.gid)
+				               end),
 		            Result;
 		        {cont, NewState} ->
 		            {get_more, Cont, NewState}
@@ -32,6 +42,12 @@
 		{result, Res} ->
 		    case addFileChunk(A, Res, State#upload{last=true}) of
 		        {done, Result} ->
+			    erlang:display("OK11"),
+			    mnesia:transaction(fun() ->
+							erlang:display("OK21"),
+							write_nodes(State#upload.gid),
+							write_edges(State#upload.gid)
+				               end),
 		            Result;
 		        {cont, _} ->
 		            err()
@@ -48,7 +64,7 @@
 	addFileChunk(_A, [], State) when State#upload.last==true,
 		                         State#upload.filename /= undefined,
 		                         State#upload.fd /= undefined ->
-
+            
 	    file:close(State#upload.fd),
 	    %%file:delete([?DIR,State#upload.filename]),
 	    Res = {ehtml,
@@ -64,16 +80,31 @@
 	addFileChunk(A, [{head, {_Name, Opts}}|Res], State ) ->
 	    case lists:keysearch("filename", 1, Opts) of
 		{value, {_, Fname0}} ->
-		    Fname = yaws_api:sanitize_file_name(basename(Fname0)),
-
+		    {_, {_, InputName}} = lists:keysearch("name", 1, Opts),
+		    erlang:display(string:tokens(InputName, "_")),
+		    [IName, Gid] = string:tokens(InputName, "_"),
+		     erlang:display(string:tokens(InputName, "_")),
+		    case IName of 
+		    	"gnodes" ->
+				Fname = "gnodes";
+			"gedges" ->
+				Fname = "gedges";
+			_ ->
+				Fname = "shit",
+				io:format("Shit happens...")
+		    end,
+		    %%Fname = yaws_api:sanitize_file_name(basename(Fname0)),
+		    {ok, Cwd} = file:get_cwd(),
 		    %% we must not put the file in the
 		    %% docroot, it may execute uploade code if the
 		    %% file is a .yaws file !!!!!
-		    file:make_dir(?DIR),
-		    case file:open([?DIR, Fname] ,[write]) of
-			{ok, Fd} ->
+		    io:format("~p~p~n", [string:concat(Cwd, ?DIR), Fname]),
+		    file:make_dir(string:concat(Cwd, ?DIR)),
+		    case file:open([string:concat(Cwd, ?DIR), Fname] ,[write]) of
+			{ok, Fd} -> 
 			    S2 = State#upload{filename = Fname,
-					      fd = Fd},
+					      fd = Fd,
+					      gid = Gid},
 			    addFileChunk(A, Res, S2);
 			Err ->
 			    {done, err()}
@@ -101,4 +132,89 @@
 		    %% probably a DOS name, remove everything after last \
 		    basename(string:substr(FilePath, N+1))
 	    end.
+
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%% Functions to parse files and put data into tables %%
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	
+	write_nodes(GraphId) ->
+		File = "/home/seva/Documents/erlgraphs/src/tmp/YawsTestUploads/gnodes",
+		{ok, Bin} = file:read_file(File),
+		Status = parse_nodes(Bin, GraphId).
+	
+	parse_nodes(Bin, GraphId) when is_binary(Bin) ->
+		parse_nodes(binary_to_list(Bin), GraphId);
+	parse_nodes(Str, GraphId) when is_list(Str) ->
+		try
+			lists:foldl(fun(Node, Status) ->
+						erlang:display(string:tokens(Node, ";")),
+						[Id, Name, X, Y] = string:tokens(Node, ";"),
+						R = mnesia:write(#vertecies{id=Id,
+								graph_id=GraphId,
+								name=Name,
+								x=X,
+								y=Y}),
+						erlang:display(R),
+						ok
+	    			     end, ok, string:tokens(Str, "\n"))
+		catch
+			_ ->
+				no_ok
+		end.
+
+	write_edges(GraphId) ->
+		File = "/home/seva/Documents/erlgraphs/src/tmp/YawsTestUploads/gedges",
+		{ok, Bin} = file:read_file(File),
+		erlang:display("OK3"),
+		Status = parse_edges(Bin,GraphId).
+	
+	parse_edges(Bin,GraphId) when is_binary(Bin) ->
+		parse_edges(binary_to_list(Bin),GraphId);
+	parse_edges(Str,GraphId) when is_list(Str) ->
+		try
+			lists:foldl(fun(Edge, Status) ->
+						erlang:display(string:tokens(Edge, ";")),
+						[V, U, I] = string:tokens(Edge, ";"),
+						Eid = case mnesia:all_keys(edges) of  
+							[] ->
+								1;
+							_ ->
+								lists:max(mnesia:all_keys(edges)) + 1
+						end,
+						R = mnesia:write(#edges{id=Eid,
+								graph_id=GraphId,
+								u_id=V,
+								v_id=U,
+								i=I}),
+						erlang:display(R),
+						ok
+	    			     end, ok, string:tokens(Str, "\n"))
+		catch
+			_ ->
+				no_ok
+		end.
+
+			
+	%% @doc Function that parses graph file into list of look
+	%% [{A1, L1, B1}, {A2, L2, B2}, ..., {AN, LN, BN}]
+	parse_graph(Bin) when is_binary(Bin) ->
+	    parse_graph(binary_to_list(Bin));
+	parse_graph(Str) when is_list(Str) ->
+	    Values = [X || X <- string:tokens(Str, "\n")],
+	    group_vals(Values, []).
+
+	%% @doc Function that parses graph file into sublists
+	group_vals([], Acc) ->
+	    lists:reverse(Acc);
+	group_vals([Value|Rest], Acc) ->
+	    [S, L, D] = string:tokens(Value, ";"),
+	    group_vals(Rest, [{S, str_to_num(L), D}|Acc]).
+
+	%% @doc Function to convert string to number.
+	%% Deals with
+	str_to_num(N) ->
+	    case string:to_float(N) of
+		{error, no_float} -> list_to_integer(N);
+		{F, _} -> F
+	    end.	
 </erl>

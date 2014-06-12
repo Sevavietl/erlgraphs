@@ -1,0 +1,36 @@
+<erl>
+	-include("graphs.hrl").
+	
+	out(A) ->
+		io:format("Fuck: ~p~n", [yaws_api:parse_query(A)]),
+		[{"gname", Gname}] = yaws_api:parse_query(A),
+		mnesia:start(),
+		case mnesia:dirty_all_keys(graphs) of 
+			[] ->
+				ok = mnesia:dirty_write(#graphs{
+							id=1,
+							name=Gname	
+						   }),
+				Gid = 1;			
+			Keys ->
+				FindDuplicates = fun() ->
+							mnesia:foldl(fun(G, Acc) when G#graphs.name =:= Gname ->
+										[Gname|Acc];
+									(_, Acc) ->
+										Acc
+		          					     end, [], graphs)
+						end,
+				case mnesia:transaction(FindDuplicates) of 
+					{atomic, []} ->
+						Gid = lists:max(Keys) + 1,
+						ok = mnesia:dirty_write(#graphs{
+										id=Gid,
+										name=Gname					
+									});
+					_ ->
+						Gid = 0
+				end
+		end,
+		Json = json2:encode({struct,[{"id",Gid},{"name",Gname}]}),
+		{content, "application/json;charset=utf-8", Json}.
+</erl>

@@ -1,0 +1,32 @@
+<erl>
+	-include("graphs.hrl).
+	
+	out(A) ->
+		{gname, Gname} = yaws_api:parse_query(A),
+		mnesia:start(),
+		case mnesia:dirty_all_keys(graphs) of 
+			[] ->
+				ok = mnesia:dirty_write(#graphs{
+							name=Gname,
+							id=1	
+						   });
+				Gid = 1			
+			Keys ->
+				case mnesia:dirty_read(graphs, Gname) =:= [] of 
+					true ->
+						Gid = lists:max(Keys) + 1
+						ok = mnesia:dirty_write(#graphs{
+										name=Gname,
+										id=Gid						
+									});
+					false ->
+						Gid = "Graph with this name already exists!"
+				end
+		end,
+		Json = json2:encode(Gid),
+		{
+			content,
+    			"application/json; charset=utf-8",
+    			Json
+		}		
+</erl>

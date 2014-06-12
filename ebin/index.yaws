@@ -25,8 +25,8 @@
 							
 							out(A) -> 
 								GetGraphs = fun() ->
-									mnesia:foldl(fun(Graph, Acc) -> 
-												lists:concat([Acc, "<li>", Graph#graphs.name, "</li>"])
+									mnesia:foldl(fun(G, Acc) -> 
+												lists:concat([Acc, "<li class=", 'graph-li', " id=", G#graphs.id,  ">", G#graphs.name, "</li>"])
 											end, [], graphs)
 									end,
 								case mnesia:transaction(GetGraphs) of 
@@ -41,14 +41,14 @@
 								end.
 						</erl>
 						<li id="add-graph">						
-							<form action="demo_form.asp">
+							<form id="add-graph-form" onsubmit="addGraph(); return false;">
 								<input type="text" name="gname">
 								<input type="submit" value="Add">
 							</form> 
 						</li>					
 					</ul>
 				</div>
-				<div style="display: table-cell;">
+				<div id="working-area" style="display: table-cell;">
 					<canvas id="viewport" width="700" height="700"></canvas>
 				</div>
 			    </div>

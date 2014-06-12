@@ -186,7 +186,7 @@
 * Function handles the addition of new graph
 */
 function addGraph() {
-	if ($("form#add-graph-form input[name=gname]").val() === "") {
+	if $("form#add-graph-form input[name=gname]").val() === "" {
 		alert("Please provide graph name!")
 	} else {
 		 $.getJSON("ajax/add_graph.yaws",

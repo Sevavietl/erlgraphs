@@ -4,7 +4,8 @@
 		<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
 		<title>ErlGraphs</title>
 		<link rel="stylesheet" type="text/css" href="./css/styles.css">
-		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"></script>
+		<!--<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"></script>-->
+		<script src="./js/jquery.js"></script>
 		<script src="./js/arbor-v0.92/lib/arbor.js"></script>
 		<script src="./js/main.js"></script>
 		<script src="jsolait/jsolait.js"></script>
@@ -13,7 +14,7 @@
 	<body>
 		<div id="container" style="width:1000px; height:100%">
 			<erl>
-				out(A) -> {yssi, "header.yaws"}.
+				out(_A) -> {yssi, "header.yaws"}.
 			</erl>
 			
 			<div style="width: 100%; display: table;">
@@ -23,22 +24,32 @@
 						<erl>
 							-include("graphs.hrl").
 							
-							out(A) -> 
-								GetGraphs = fun() ->
-									mnesia:foldl(fun(G, Acc) -> 
-												lists:concat([Acc, "<li class=", 'graph-li', " id=", G#graphs.id,  ">", G#graphs.name, "</li>"])
-											end, [], graphs)
-									end,
-								case mnesia:transaction(GetGraphs) of 
-									{atomic, List} ->
-										{html, List};
-									{aborted, Reason} ->
-										io:format("Aborted: ~p~n", [Reason]);
-									{error, Reason} ->										
-										io:format("Erorror: ~s~n", [Reason]);
-									Other -> 
-										io:format("Other: ~p~n", [Other])
-								end.
+							out(_A) ->
+								mnesia:start(),
+								case mnesia:wait_for_tables([graphs], 1000) of 
+									ok -> 										 
+										GetGraphs = fun() ->
+											mnesia:foldl(fun(G, Acc) -> 
+														lists:concat([Acc, "<li class=", 'graph-li', " id=", G#graphs.id,  ">", G#graphs.name, "</li>"])
+													end, [], graphs)
+											end,
+										case mnesia:transaction(GetGraphs) of 
+											{atomic, List} ->
+												{html, List};
+											{aborted, Reason} ->
+												io:format("Aborted: ~p~n", [Reason]);
+											{error, Reason} ->										
+												io:format("Erorror: ~s~n", [Reason]);
+											Other -> 
+												io:format("Other: ~p~n", [Other])
+										end;
+									{timeout, BadTabList} ->
+										io:format("Timeout, BadTabList: ~p~n", [BadTabList]), 
+										{redirect_local, "/timeout.yaws"};
+									{error, Reason} ->
+										io:format("Error, Reason: ~p~n", [Reason]),
+										{redirect_local, "/error.yaws"}
+								end.	
 						</erl>
 						<li id="add-graph">						
 							<form id="add-graph-form" onsubmit="addGraph(); return false;">
@@ -55,7 +66,7 @@
 			</div>
 		
 			<erl>
-				out(A) -> {yssi, "footer.yaws"}.		
+				out(_A) -> {yssi, "footer.yaws"}.		
 			</erl>
 		</div>
 	</body>

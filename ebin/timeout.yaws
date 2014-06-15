@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+		<title>ErlGraphs</title>
+		<link rel="stylesheet" type="text/css" href="./css/styles.css">
+	</head>
+
+	<body>
+		<div id="container" style="width:1000px; height:100%">
+			<erl>
+				out(A) -> {yssi, "header.yaws"}.
+			</erl>
+			
+			<h2>Sorry the page is taken too long to respond! Please, try to load page later</h2>
+			
+			<erl>
+				out(A) -> {yssi, "footer.yaws"}.		
+			</erl>
+		</div>
+	</body>
+</html> 

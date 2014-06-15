@@ -12,7 +12,7 @@ main() ->
 	File = "graph.txt",
 	{ok, Bin} = file:read_file(File),
 	Graph = parse_graph(Bin),
-	Source = "h",
+	Source = "a",
 	Target = "f",
 	Dist = create_dist(Graph, maps:new()),
 	DistNew = maps:update(Source, 0, Dist),

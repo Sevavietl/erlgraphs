@@ -28,26 +28,28 @@
 	    case Parse of
 		{cont, Cont, Res} ->
 		    case addFileChunk(A, Res, State) of
-		        {done, Result} ->
-			    erlang:display("OK1"),
-			    mnesia:transaction(fun() ->
-							erlang:display("OK2"),
-							write_nodes(State#upload.gid),
-							write_edges(State#upload.gid)
-				               end),
+		        {done, Result, Gid} ->
+					erlang:display("OK1"),
+					mnesia:transaction(fun() ->
+										erlang:display(Gid),
+										erlang:display("OK2"),
+										write_nodes(Gid),
+										write_edges(Gid)
+						           end),
 		            Result;
 		        {cont, NewState} ->
 		            {get_more, Cont, NewState}
 		    end;
 		{result, Res} ->
 		    case addFileChunk(A, Res, State#upload{last=true}) of
-		        {done, Result} ->
-			    erlang:display("OK11"),
-			    mnesia:transaction(fun() ->
-							erlang:display("OK21"),
-							write_nodes(State#upload.gid),
-							write_edges(State#upload.gid)
-				               end),
+				    {done, Result, Gid} ->
+					erlang:display("OK11"),
+					mnesia:transaction(fun() ->
+										erlang:display(Gid),
+										erlang:display("OK21"),
+										write_nodes(Gid),
+										write_edges(Gid)
+						           end),
 		            Result;
 		        {cont, _} ->
 		            err()
@@ -69,7 +71,7 @@
 	    %%file:delete([?DIR,State#upload.filename]),
 	    Res = {ehtml,
 		   {p,[], "File upload done"}},
-	    {done, Res};
+	    {done, Res, State#upload.gid};
 
 	addFileChunk(A, [], State) when State#upload.last==true ->
 	    {done, err()};
@@ -86,12 +88,12 @@
 		     erlang:display(string:tokens(InputName, "_")),
 		    case IName of 
 		    	"gnodes" ->
-				Fname = "gnodes";
-			"gedges" ->
-				Fname = "gedges";
-			_ ->
-				Fname = "shit",
-				io:format("Shit happens...")
+					Fname = "gnodes";
+				"gedges" ->
+					Fname = "gedges";
+				_ ->
+					Fname = "shit",
+					io:format("Shit happens...")
 		    end,
 		    %%Fname = yaws_api:sanitize_file_name(basename(Fname0)),
 		    {ok, Cwd} = file:get_cwd(),

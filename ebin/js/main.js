@@ -213,7 +213,7 @@ function addGraph() {
 						    form += '<label>Upload file with all Nodes and Node coordinates</label>'
 						    form += '<input width="50" type="file" name="gnodes_' + graph.id + '">'
 						    form += '<label>Upload file with all Graph edges</label>'
-						    form += '<input width="50" type="file" name="gedges_ ' + graph.id + '"><br />'
+						    form += '<input width="50" type="file" name="gedges_' + graph.id + '"><br />'
 						    form += '<input type="submit" value="Upload">'
 						    form += '</form>'
 

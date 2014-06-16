@@ -1,0 +1,153 @@
+<erl>
+	-include("graphs.hrl").
+
+	out(A) ->
+		[{"gid", Gid}, {"source", Source}, {"target", Target}] = yaws_api:parse_query(A),
+		mnesia:start(),
+		SelectEdges = fun() -> 
+					mnesia:select(edges, [{#edges{graph_id=Gid, _ = '_'}, [], ['$_']}], read) 
+				end,
+		case mnesia:transaction(SelectEdges) of 
+			{atomic, []} ->
+				Json = json2:encode({struct,[{"id",Gid},{"name","foo"}]}), 
+				{content, "application/json;charset=utf-8", Json};
+			{atomic, Edges} ->
+				Graph = lists:foldl(fun(Record, Acc) ->
+										[{Record#edges.u_id, str_to_num(Record#edges.i), Record#edges.v_id}|Acc]
+									end, [], Edges),
+				erlang:display(Graph),
+				{Dist, Path} = main(Source, Target, Graph),
+				erlang:display(Path),
+				RespDist = "{\"dist\": \"" ++ lists:flatten(io_lib:format("~p", [Dist])) ++ "\", \"path\": [",
+				RespPath = lists:foldl(fun({P, N}, Acc) ->
+											Acc ++ json2:encode({struct, [{"p", P}, {"n", N}]}) ++ ","
+									   end, "", Path),
+				Json = RespDist ++ RespPath ++ "{}]}",
+				{content, "application/json;charset=utf-8", Json}		
+		end.
+		
+		
+	main(Source, Target, Graph) ->
+		Dist = create_dist(Graph, maps:new()),
+		DistNew = maps:update(Source, 0, Dist),
+		Previous = create_previous(Graph, maps:new()),
+		{DistResult, PreviousResult} = loop(Source, Target, Graph, DistNew, Previous),
+		{maps:get(Target, DistResult), shortest_path_from_previous(Source, Target, PreviousResult, [])}.
+
+	%% @doc The main loop of Dijkstra algorithm.
+	%% Returns tuple of maps with Distances and Previuos Nodes.
+	loop(_Source, _Target, [], Dist, Previous) -> % The base case that hits when there're no more nodes in the graph.
+		{Dist, Previous};
+	loop(Source, Target, Graph, Dist, Previous) ->
+		{U, _, _} = lists:foldl(fun({N1, _D1, _V1}, {N2, _D2, _V2}) -> % Source node in first case.
+						case less(maps:get(N1, Dist), maps:get(N2, Dist)) of
+							true -> {N1, _D1, _V1};
+				   			false -> {N2, _D2, _V2}
+						end
+					end, hd(Graph), tl(Graph)),
+		if 
+			U =:= Target ->
+				loop(Source, Target, [], Dist, Previous); % Terminate search if current constant node is the target node.
+			U =/= Target ->
+				case maps:get(U, Dist) =:= infinity of 
+					true ->
+						loop(Source, Target, Graph, Dist, Previous); % All remainign nodes are inaccessible from the source node. TODD: Implement wright message passing
+					false ->
+						Neighbors = get_neighbors(U, Graph), % Get all the neighboring nodes of current constant node.
+						NewGraph = remove_vertices(U, Graph), % Remove current constant node from the graph list.
+						case Neighbors of 
+							[] ->
+								loop(Source, Target, NewGraph, Dist, Previous);
+							_ ->	
+								{NewDist, NewPrevious} = lists:foldl(fun({_, D, V}, {DistAcc, PreviousAcc}) ->                                                      
+															Alt = maps:get(U, Dist) + D,
+															case less(Alt, maps:get(V, Dist)) of
+																true -> % Relax (u,v,d), where u - current constant node, v - current neighbor, d - distance 
+																	{maps:update(V, Alt, DistAcc),
+																	maps:update(V, U, PreviousAcc)};
+																false ->
+																	{DistAcc, PreviousAcc}
+															end
+					  	      					      	end, {Dist, Previous}, Neighbors),
+								loop(Source, Target, NewGraph, NewDist, NewPrevious)
+						end
+				end
+		end.
+	
+	%% @doc Function creates dist array - assign to every node a tentative 
+	%% distance value - infinity, as for now (uses map structure).
+	create_dist([], Acc) ->
+		Acc;
+	create_dist([{Vertex1, _, Vertex2}|Graph], Acc) ->
+		case maps:is_key(Vertex1, Acc) of
+			true -> 
+				case maps:is_key(Vertex2, Acc) of
+					true ->
+						create_dist(Graph, Acc);
+					false ->
+						create_dist(Graph, maps:put(Vertex2, infinity, Acc))
+				end;
+			false -> 
+				case maps:is_key(Vertex2, Acc) of
+					true ->
+						create_dist(Graph, maps:put(Vertex1, infinity, Acc));
+					false ->
+						create_dist(Graph, maps:put(Vertex2, infinity,  maps:put(Vertex1, infinity, Acc)))
+				end
+		end.
+	
+
+	%% @doc Function creates previous array - assign to every node a previous node - undefined, as for now 
+	%% (uses map structure)
+	create_previous([], Acc) ->
+		    Acc;
+	create_previous([{Vertex1, _, Vertex2}|Graph], Acc) ->
+		case maps:is_key(Vertex1, Acc) of
+			true ->
+				case maps:is_key(Vertex2, Acc) of
+					true ->
+						create_previous(Graph, Acc);
+					false ->
+						create_previous(Graph, maps:put(Vertex2, undefined, Acc))
+				end;
+			false ->
+				case maps:is_key(Vertex2, Acc) of
+					true ->
+						create_previous(Graph, maps:put(Vertex1, undefined, Acc));
+					false ->
+						create_previous(Graph, maps:put(Vertex2, undefined, maps:put(Vertex1, undefined, Acc)))
+				end
+		    end.
+
+	%% @doc Function to compare distances in the algorithm.
+	%% In opposite to < operator can deal with infinity, wich is vital.
+	%% Helps not to use cheking if distance is infinity.
+	less(infinity, infinity) -> false;
+	less(_, infinity) -> true;
+	less(infinity, _) -> false;
+	less(A, B) -> A < B.
+
+	%% @doc Function that removes used nodes from the Graph list. 
+	remove_vertices(Vertice, Graph) ->
+		[{U, D, V} || {U, D, V} <- Graph, not(U == Vertice) andalso not(V == Vertice)].
+
+	%% @doc Function to get a list of neighboring nodes in the Graph.
+	get_neighbors(Vertice, Graph) ->
+		[{U, D, V} || {U, D, V} <- Graph, U == Vertice].
+
+
+	%% @doc Function to construct the shortest path with a stack.
+	%% We push the vertex into the stack and then traverse from target to source.
+	shortest_path_from_previous(S, S, Previous, Path) ->
+		Path; 
+	shortest_path_from_previous(S, T, Previous, Path) ->
+		shortest_path_from_previous(S, maps:get(T, Previous), Previous, [{T, maps:get(T, Previous)}|Path]).
+		
+	%% @doc Function to convert string to number.
+	%% Deals with float and integers.
+	str_to_num(N) ->
+		case string:to_float(N) of
+			{error, no_float} -> list_to_integer(N);
+			{F, _} -> F
+		end.
+</erl>

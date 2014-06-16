@@ -31,6 +31,6 @@
 						Gid = 0
 				end
 		end,
-		Json = json2:encode(lists:concat(["{id:", Gid, ", name:", Gname, "}"])),
+		Json = json2:encode({struct,[{"id",Gid},{"name",Gname}]}),
 		{content, "application/json;charset=utf-8", Json}.
 </erl>

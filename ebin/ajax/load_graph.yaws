@@ -4,6 +4,36 @@
 	out(A) ->
 		io:format("Fuck: ~p~n", [yaws_api:parse_query(A)]),
 		erlang:display(yaws_api:parse_query(A)),
-		[{"id", Gid}] = yaws_api:parse_query(A),
-		mnesia:start().
-</erl>
+		[{"id", Gid}, {"name", Gname}] = yaws_api:parse_query(A),
+		mnesia:start(),
+		SelectNodes = fun() -> 
+					mnesia:select(vertecies, [{#vertecies{graph_id=Gid, _ = '_'}, [], ['$_']}], read) 
+				end,
+		case mnesia:transaction(SelectNodes) of 
+			{atomic, []} ->
+				Json = json2:encode({struct,[{"id",Gid},{"name","foo"}]}), 
+				{content, "application/json;charset=utf-8", Json};
+			{atomic, Nodes} ->
+				ResponseNodes = "{\"status\":\"ok\", \"id\":\"" ++ Gid ++ "\", \"gname\": \"" ++ Gname ++ "\", \"nodes\": [" ++ lists:foldl(fun(Record, Acc) ->
+																				Acc ++ json2:encode({struct, [{"id", Record#vertecies.id},
+											  									 					          {"name", Record#vertecies.name},
+											  						                                          {"x", Record#vertecies.x},
+											  						                                          {"y", Record#vertecies.y}]}) ++ ","
+										end, "", Nodes) ++ "{}], ",
+				SelectEdges = fun() ->
+							  		mnesia:select(edges, [{#edges{graph_id=Gid, _ = '_'}, [], ['$_']}], read)
+							  end,
+				{atomic, Edges} = mnesia:transaction(SelectEdges),
+				ResponseEdges = "\"edges\": [" ++ lists:foldl(fun(Record, Acc) ->
+																				Acc ++ json2:encode({struct, [{"id", Record#edges.id},
+											  									 					          {"u_id", Record#edges.u_id},
+											  						                                          {"v_id", Record#edges.v_id},
+											  						                                          {"i", Record#edges.i}]}) ++ ","
+										end, "", Edges) ++ "{}]}",
+				Response = ResponseNodes ++ ResponseEdges,
+				{content, "application/json;charset=utf-8", Response};
+			Other ->
+				Json = json2:encode({struct,[{"id",Gid},{"name","foo"}]}),
+				{content, "application/json;charset=utf-8", Json}
+		end.
+</erl>	

@@ -29,28 +29,22 @@
 		{cont, Cont, Res} ->
 		    case addFileChunk(A, Res, State) of
 		        {done, Result, Gid} ->
-					erlang:display("OK1"),
 					mnesia:transaction(fun() ->
-										erlang:display(Gid),
-										erlang:display("OK2"),
 										write_nodes(Gid),
 										write_edges(Gid)
 						           end),
-		            Result;
+		            {redirect_local, "/index.yaws"};
 		        {cont, NewState} ->
 		            {get_more, Cont, NewState}
 		    end;
 		{result, Res} ->
 		    case addFileChunk(A, Res, State#upload{last=true}) of
 				    {done, Result, Gid} ->
-					erlang:display("OK11"),
 					mnesia:transaction(fun() ->
-										erlang:display(Gid),
-										erlang:display("OK21"),
 										write_nodes(Gid),
 										write_edges(Gid)
 						           end),
-		            Result;
+		            {redirect_local, "/index.yaws"};
 		        {cont, _} ->
 		            err()
 		    end;

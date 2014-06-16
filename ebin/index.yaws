@@ -12,15 +12,14 @@
 	</head>
 
 	<body>
-		<div id="container" style="width:1000px; height:100%">
-			<erl>
+		<erl>
 				out(_A) -> {yssi, "header.yaws"}.
-			</erl>
-			
+		</erl>
+		<div id="container">			
 			<div style="width: 100%; display: table;">
 			    <div style="display: table-row">
-				<div style="width: 300px; display: table-cell;">
-					<ul id="list-of-graphs">Graphs:
+				<div id="menu" style="width: 300px; display: table-cell; vertical-align: top;">
+					<ul id="list-of-graphs"><b>Your Graphs:</b>
 						<erl>
 							-include("graphs.hrl").
 							
@@ -51,7 +50,8 @@
 										{redirect_local, "/error.yaws"}
 								end.	
 						</erl>
-						<li id="add-graph">						
+						<li id="add-graph">
+							<p>You can add new graphs here:</p>						
 							<form id="add-graph-form" onsubmit="addGraph(); return false;">
 								<input type="text" name="gname">
 								<input type="submit" value="Add">
@@ -60,14 +60,13 @@
 					</ul>
 				</div>
 				<div id="working-area" style="display: table-cell;">
-					<canvas id="viewport" width="700" height="700"></canvas>
+					<p id="welcome">Welcome! Please, select existing Graph to process or add a new one. You can find the list of your existing graphs in the Graph List on the left menu.</p>
 				</div>
 			    </div>
 			</div>
-		
-			<erl>
-				out(_A) -> {yssi, "footer.yaws"}.		
-			</erl>
 		</div>
+		<erl>
+			out(_A) -> {yssi, "footer.yaws"}.		
+		</erl>
 	</body>
 </html> 

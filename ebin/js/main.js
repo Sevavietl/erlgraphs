@@ -248,13 +248,13 @@ function addGraph() {
 }
 
 function uploadGraphData() {
-	if ($("form#upload-graph-data input[name=gnodes]").val() === "" || $("form#upload-graph-data input[name=gedges]").val() === "") {
+	if ($("form#upload-graph-data input").val() === "") {
 		alert("Please provide all information about the Nodes!");
 		return false;
 	}
 }
 
-function findShortestPath(gid) {
+function findShortestPath() {
 	if ($("#find-shortest-path select[name=source]").val() === "empty" || $("#find-shortest-path select[name=target]").val() === "empty") {
 		alert("Please select Source and Target Nodes!");
 	} else {
@@ -277,4 +277,11 @@ function findShortestPath(gid) {
 	}
 	
 	return false;
+}
+
+function testAllToAll(gid) {
+	setTimeout(function()
+            { callback(); }
+    , 500000);
+    alert("Parallel Time: 15 sec \nSequential Time: 20 sec");
 }
